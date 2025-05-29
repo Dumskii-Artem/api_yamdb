@@ -1,11 +1,12 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+from api_yamdb import settings
+
 MAX_USERNAME_LENGTH = 100
 MAX_EMAIL_LENGTH = 100
 MAX_NAME_LENGTH = 100
 MAX_ROLE_LENGTH = 15
-
 
 USER = 'user'
 MODERATOR = 'moderator'
@@ -15,6 +16,7 @@ ROLE_CHOICES = [
     (MODERATOR, 'Модератор'),
     (ADMIN, 'Администратор'),
 ]
+
 
 class User(AbstractUser):
     username = models.CharField(
@@ -50,6 +52,11 @@ class User(AbstractUser):
     last_name = models.CharField(
         verbose_name='Фамилия',
         max_length=MAX_NAME_LENGTH,
+        blank=True,
+    )
+
+    confirmation_code = models.CharField(
+        max_length=settings.CONFIRMATION_CODE_LENGTH,
         blank=True,
     )
 
