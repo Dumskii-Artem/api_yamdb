@@ -4,7 +4,6 @@ from django.conf import settings
 # from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from rest_framework.exceptions import ValidationError
-from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework import status, viewsets, permissions, decorators
 from rest_framework.views import APIView
@@ -13,6 +12,14 @@ from rest_framework_simplejwt.tokens import AccessToken
 from .serializers import SignupSerializer, TokenObtainSerializer, \
     UserSerializer
 from reviews.models import User
+
+from django.shortcuts import get_object_or_404
+
+from api.serializers import (
+    CommentSerializer, TitleSerializer, ReviewSerializer
+)
+from reviews.models import Comment, Review, Title, User
+
 
 class SignupView(APIView):
     def post(self, request):
@@ -98,3 +105,34 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer.save()
         return Response(serializer.data)
 
+class TitleViewSet(viewsets.ModelViewSet):
+    queryset = Title.objects.all()
+    serializer_class = TitleSerializer
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    serializer_class = CommentSerializer
+    # permission_classes = ()
+
+    def get_review(self):
+        return get_object_or_404(Review, pk=self.kwargs.get('review_id'))
+
+    def get_queryset(self):
+        return self.get_review().comments.all()
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user, review=self.get_review())
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    serializer_class = ReviewSerializer
+    # permission_classes = ()
+
+    def get_title(self):
+        return get_object_or_404(Title, pk=self.kwargs.get('title_id'))
+
+    def get_queryset(self):
+        return self.get_title().reviews.all()
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user, title=self.get_title())
