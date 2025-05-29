@@ -1,14 +1,25 @@
+# ПРИМЕР ПРИМЕНЕНИЯ
+# class TokenObtainView(APIView):
+#     def post(self, request):
+#         serializer = TokenObtainSerializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         # для примера!!!
+#         permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrAdmin]
+
 import random
 
 from django.conf import settings
 # from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated, \
+    IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework import status, viewsets, permissions, decorators
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
 
+from .permissions import IsAdmin, IsAuthorOrModeratorOrAdmin
 from .serializers import SignupSerializer, TokenObtainSerializer, \
     UserSerializer
 from reviews.models import User
@@ -35,7 +46,6 @@ class SignupView(APIView):
             username=username,
             email=email
         )
-        # confirmation_code = default_token_generator.make_token(user)
         confirmation_code = ''.join(
             random.choices(
                 settings.CONFIRMATION_CODE_CHARS,
@@ -91,6 +101,12 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
+    lookup_field = 'username'
+
+    def get_permissions(self):
+        if self.action == 'me':
+            return [IsAuthenticated()]
+        return [IsAdmin()]
 
     @decorators.action(methods=['GET', 'PATCH'], url_path='me', detail=False)
     def me(self, request):

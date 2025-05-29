@@ -8,7 +8,7 @@ from reviews.constants import MIN_RATING, MAX_RATING
 MAX_USERNAME_LENGTH = 100
 MAX_EMAIL_LENGTH = 100
 MAX_NAME_LENGTH = 100
-MAX_ROLE_LENGTH = 15
+MAX_ROLE_LENGTH = 12
 
 USER = 'user'
 MODERATOR = 'moderator'
@@ -61,6 +61,18 @@ class User(AbstractUser):
         max_length=settings.CONFIRMATION_CODE_LENGTH,
         blank=True,
     )
+
+    @property
+    def is_admin(self):
+        return self.is_staff or self.role == ADMIN
+
+    @property
+    def is_moderator(self):
+        return self.role == MODERATOR
+
+    @property
+    def is_user(self):
+        return self.role == USER
 
 
 class Title(models.Model):
