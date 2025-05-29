@@ -1,11 +1,9 @@
 from django.conf import settings
-from rest_framework import serializers
 
 from reviews.models import MAX_USERNAME_LENGTH, MAX_EMAIL_LENGTH, User
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from rest_framework.relations import SlugRelatedField
 
 from reviews.models import Comment, Review, Title, User
 
