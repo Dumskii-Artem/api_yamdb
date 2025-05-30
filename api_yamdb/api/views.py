@@ -1,17 +1,28 @@
+# ПРИМЕР ПРИМЕНЕНИЯ
+# class TokenObtainView(APIView):
+#     def post(self, request):
+#         serializer = TokenObtainSerializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         # для примера!!!
+#         permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrAdmin]
+
 import random
 
 from django.conf import settings
-# from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status, viewsets, permissions, decorators
+from rest_framework import (
+    status, viewsets, permissions, decorators, serializers, filters)
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
 
+from .permissions import IsAdmin
 from .serializers import SignupSerializer, TokenObtainSerializer, \
-    UserSerializer
-from reviews.models import User
+    UserSerializer, UserMeSerializer
 
 from django.shortcuts import get_object_or_404
 
@@ -20,22 +31,51 @@ from api.serializers import (
 )
 from reviews.models import Comment, Review, Title, User
 
+USERNAME_ERROR_MESSAGE = 'Пользователь с таким username уже есть'
+EMAIL_ERROR_MESSAGE = 'У этого пользователя другой Email.'
+EMAIL_ALIEN_ERROR_MESSAGE = 'Чужой email.'
+USERNAME_EMAIL_MISMATCH = 'username и email принадлежат разным пользователям.'
 
 class SignupView(APIView):
     def post(self, request):
-        print(SignupSerializer, SignupSerializer.__module__,
-              SignupSerializer.__bases__)
-
         serializer = SignupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         username = serializer.validated_data['username']
         email = serializer.validated_data['email']
 
-        user, _ = User.objects.get_or_create(
-            username=username,
-            email=email
-        )
-        # confirmation_code = default_token_generator.make_token(user)
+        user_by_username = User.objects.filter(username=username).first()
+        user_by_email = User.objects.filter(email=email).first()
+
+        # 1) Оба существуют, но не соответствуют одному и тому же объекту
+        if (user_by_username and user_by_email
+                and user_by_username != user_by_email):
+            raise serializers.ValidationError({
+                'username': [USERNAME_ERROR_MESSAGE],
+                'email': [EMAIL_ALIEN_ERROR_MESSAGE]
+            })
+
+        # 2) Оба существуют и соответствуют
+        if user_by_username and user_by_email and user_by_username == user_by_email:
+            user = user_by_username
+            # высылаем код
+            ...
+
+        # 3) Существует только username (новый email) — ошибка по email
+        elif user_by_username:
+            raise serializers.ValidationError({
+                'username': [EMAIL_ERROR_MESSAGE]
+            })
+
+        # 4) Существует только email (новый username) — ошибка по username
+        elif user_by_email:
+            raise serializers.ValidationError({
+                'email': [EMAIL_ALIEN_ERROR_MESSAGE]
+            })
+
+        # 5) Ни username, ни email не существуют — создаём нового пользователя
+        else:
+            user = User.objects.create(username=username, email=email)
+
         confirmation_code = ''.join(
             random.choices(
                 settings.CONFIRMATION_CODE_CHARS,
@@ -67,7 +107,9 @@ class TokenObtainView(APIView):
 
         username = serializer.validated_data['username']
         confirmation_code = serializer.validated_data['confirmation_code']
+
         user = get_object_or_404(User, username=username)
+        # user = User.objects.filter(username=username).first()
 
         code_Ok = (
             (len(confirmation_code)==settings.CONFIRMATION_CODE_LENGTH)
@@ -79,31 +121,104 @@ class TokenObtainView(APIView):
         user.save(update_fields=['confirmation_code'])
         if not code_Ok:
             raise ValidationError('Неверный код подтверждения. '
-                                  'Запросите новый код'
                 f'{confirmation_code}!={user.confirmation_code}'
                                   )
 
         token = AccessToken.for_user(user)
         return Response({'token': str(token)}, status=status.HTTP_200_OK)
 
+class UserPagination(PageNumberPagination):
+    page_size = 5  # число на страницу
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
+    queryset = User.objects.all().order_by('username')
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = UserPagination
+    lookup_field = 'username'
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['username', 'email', 'first_name', 'last_name', 'role']
+    http_method_names = ['get', 'patch', 'post', 'head',
+                         'options', 'delete']  # без 'put'
 
-    @decorators.action(methods=['GET', 'PATCH'], url_path='me', detail=False)
+    def get_permissions(self):
+        if self.action == 'me':
+            return [IsAuthenticated()]
+        return [IsAdmin()]
+
+    def get_serializer_class(self):
+        if self.action == 'me':
+            return UserMeSerializer
+        return UserSerializer
+
+    # def update(self, request, *args, **kwargs):
+    #     return Response(
+    #         {"detail": "Метод PUT не разрешён."},
+    #         status=status.HTTP_405_METHOD_NOT_ALLOWED
+    #     )
+    #
+    # def partial_update(self, request, *args, **kwargs):
+    #     return Response(
+    #         {"detail": "Метод PATCH не разрешён."},
+    #         status=status.HTTP_405_METHOD_NOT_ALLOWED
+    #     )
+
+    @action(methods=['GET', 'PATCH', 'DELETE'], detail=False, url_path='me')
     def me(self, request):
         if request.method == 'GET':
             serializer = self.get_serializer(request.user)
             return Response(serializer.data)
 
-        serializer = self.get_serializer(
-            request.user, data=request.data, partial=True
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+        if request.method == 'PATCH':
+            data = request.data.copy()
+
+            # Защита от изменения роли
+            if 'role' in data:
+                data.pop('role')
+
+            serializer = self.get_serializer(
+                request.user, data=data, partial=True
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+
+        return Response(
+            {"detail": "Метод не разрешён."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED)
+#
+# class UserViewSet(viewsets.ModelViewSet):
+#     queryset = User.objects.all().order_by('username')
+#     serializer_class = UserSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+#     pagination_class = UserPagination
+#     lookup_field = 'username'
+#     filter_backends = [filters.SearchFilter]
+#     search_fields = ['username', 'email', 'first_name', 'last_name', 'role']
+#
+#
+#     def get_permissions(self):
+#         if self.action == 'me':
+#             return [IsAuthenticated()]
+#         return [IsAdmin()]
+#
+#     def get_serializer_class(self):
+#         if self.action == 'me':
+#             return UserMeSerializer
+#         return UserSerializer
+#
+#     @decorators.action(methods=['GET', 'PATCH'], url_path='me', detail=False)
+#     def me(self, request):
+#         if request.method == 'GET':
+#             serializer = UserMeSerializer(request.user)
+#             return Response(serializer.data)
+#
+#         serializer = UserMeSerializer(
+#             request.user, data=request.data, partial=True
+#         )
+#         serializer.is_valid(raise_exception=True)
+#         serializer.save()
+#         return Response(serializer.data)
 
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all()

@@ -4,11 +4,12 @@ from django.db import models
 
 from api_yamdb import settings
 from reviews.constants import MIN_RATING, MAX_RATING
+from reviews.validators import check_username
 
-MAX_USERNAME_LENGTH = 100
-MAX_EMAIL_LENGTH = 100
+MAX_USERNAME_LENGTH = 150
+MAX_EMAIL_LENGTH = 254
 MAX_NAME_LENGTH = 100
-MAX_ROLE_LENGTH = 15
+MAX_ROLE_LENGTH = 12
 
 USER = 'user'
 MODERATOR = 'moderator'
@@ -25,6 +26,7 @@ class User(AbstractUser):
         verbose_name='Логин',
         max_length=MAX_USERNAME_LENGTH,
         unique=True,
+        validators=[check_username],
     )
 
     email = models.EmailField(
@@ -35,7 +37,8 @@ class User(AbstractUser):
 
     role = models.CharField(
         verbose_name='Роль',
-        max_length=MAX_ROLE_LENGTH,
+        # max 'user', 'admin', 'moderator' = 9
+        max_length=max(len(role) for role, _ in ROLE_CHOICES),
         choices=ROLE_CHOICES,
         default=USER,
     )
@@ -61,6 +64,18 @@ class User(AbstractUser):
         max_length=settings.CONFIRMATION_CODE_LENGTH,
         blank=True,
     )
+
+    @property
+    def is_admin(self):
+        return self.is_staff or self.role == ADMIN
+
+    @property
+    def is_moderator(self):
+        return self.role == MODERATOR
+
+    @property
+    def is_user(self):
+        return self.role == USER
 
 
 class Title(models.Model):
