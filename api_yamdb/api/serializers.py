@@ -6,9 +6,10 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from reviews.models import Comment, Review, Title, User
+from reviews.validators import UsernameValidator, RegirteredUsernameValidator
 
 
-class SignupSerializer(serializers.Serializer):
+class SignupSerializer(UsernameValidator, serializers.Serializer):
     username = serializers.CharField(
         required=True,
         max_length=MAX_USERNAME_LENGTH
@@ -17,6 +18,9 @@ class SignupSerializer(serializers.Serializer):
         required=True,
         max_length=MAX_EMAIL_LENGTH
     )
+
+    # class TokenObtainSerializer(RegirteredUsernameValidator,
+    #                             serializers.Serializer):
 
 class TokenObtainSerializer(serializers.Serializer):
     username = serializers.CharField(
@@ -28,11 +32,16 @@ class TokenObtainSerializer(serializers.Serializer):
         required=True
     )
 
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(UsernameValidator, serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('username', 'email', 'first_name',
                   'last_name', 'bio', 'role')
+
+class UserMeSerializer(UserSerializer):
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'first_name', 'last_name', 'bio', 'role')
         read_only_fields = ('role',)
 
 class TitleSerializer(serializers.ModelSerializer):
