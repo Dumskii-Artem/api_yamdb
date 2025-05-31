@@ -157,18 +157,6 @@ class UserViewSet(viewsets.ModelViewSet):
             return UserMeSerializer
         return UserSerializer
 
-    # def update(self, request, *args, **kwargs):
-    #     return Response(
-    #         {"detail": "Метод PUT не разрешён."},
-    #         status=status.HTTP_405_METHOD_NOT_ALLOWED
-    #     )
-    #
-    # def partial_update(self, request, *args, **kwargs):
-    #     return Response(
-    #         {"detail": "Метод PATCH не разрешён."},
-    #         status=status.HTTP_405_METHOD_NOT_ALLOWED
-    #     )
-
     @action(methods=['GET', 'PATCH', 'DELETE'], detail=False, url_path='me')
     def me(self, request):
         if request.method == 'GET':
@@ -192,40 +180,6 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(
             {"detail": "Метод не разрешён."},
             status=status.HTTP_405_METHOD_NOT_ALLOWED)
-#
-# class UserViewSet(viewsets.ModelViewSet):
-#     queryset = User.objects.all().order_by('username')
-#     serializer_class = UserSerializer
-#     permission_classes = [permissions.IsAuthenticated]
-#     pagination_class = UserPagination
-#     lookup_field = 'username'
-#     filter_backends = [filters.SearchFilter]
-#     search_fields = ['username', 'email', 'first_name', 'last_name', 'role']
-#
-#
-#     def get_permissions(self):
-#         if self.action == 'me':
-#             return [IsAuthenticated()]
-#         return [IsAdmin()]
-#
-#     def get_serializer_class(self):
-#         if self.action == 'me':
-#             return UserMeSerializer
-#         return UserSerializer
-#
-#     @decorators.action(methods=['GET', 'PATCH'], url_path='me', detail=False)
-#     def me(self, request):
-#         if request.method == 'GET':
-#             serializer = UserMeSerializer(request.user)
-#             return Response(serializer.data)
-#
-#         serializer = UserMeSerializer(
-#             request.user, data=request.data, partial=True
-#         )
-#         serializer.is_valid(raise_exception=True)
-#         serializer.save()
-#         return Response(serializer.data)
-
 
 class ListCreateDelViewSet(
         mixins.ListModelMixin,

@@ -21,9 +21,6 @@ class SignupSerializer(UsernameValidator, serializers.Serializer):
         max_length=MAX_EMAIL_LENGTH
     )
 
-    # class TokenObtainSerializer(RegirteredUsernameValidator,
-    #                             serializers.Serializer):
-
 class TokenObtainSerializer(serializers.Serializer):
     username = serializers.CharField(
         max_length=MAX_USERNAME_LENGTH,

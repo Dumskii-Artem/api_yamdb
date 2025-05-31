@@ -3,8 +3,6 @@ import re
 from django.conf import settings
 from rest_framework.exceptions import ValidationError
 from rest_framework import serializers
-from django.shortcuts import get_object_or_404
-
 
 # FORBIDDEN_USERNAMES = ['me',]
 
