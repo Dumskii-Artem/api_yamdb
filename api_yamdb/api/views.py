@@ -10,26 +10,32 @@ import random
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db.models import Avg
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import (
-    status, viewsets, permissions, decorators, serializers, filters)
+    status, viewsets, permissions, decorators, serializers, filters, mixins
+)
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
 
-from .permissions import IsAdmin
+from .permissions import IsAdmin, IsAuthorOrModeratorOrAdmin, IsAdminOrReadOnly
 from .serializers import SignupSerializer, TokenObtainSerializer, \
     UserSerializer, UserMeSerializer
 
 from django.shortcuts import get_object_or_404
 
 from api.serializers import (
-    CommentSerializer, TitleSerializer, ReviewSerializer
+    CategorySerializer, CommentSerializer, GenreSerializer, TitleSerializer,
+    TitleActionsSerializer, ReviewSerializer
 )
-from reviews.models import Comment, Review, Title, User
+from api.filters import TitleFilter
+from reviews.models import Category, Comment, Genre, Review, Title, User
+
 
 USERNAME_ERROR_MESSAGE = 'Пользователь с таким username уже есть'
 EMAIL_ERROR_MESSAGE = 'У этого пользователя другой Email.'
@@ -220,14 +226,57 @@ class UserViewSet(viewsets.ModelViewSet):
 #         serializer.save()
 #         return Response(serializer.data)
 
+
+class ListCreateDelViewSet(
+        mixins.ListModelMixin,
+        mixins.CreateModelMixin,
+        mixins.DestroyModelMixin,
+        viewsets.GenericViewSet
+    ):
+    """Базовый вьюсет для CategoryViewSet и GenreViewSet."""
+
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name',)
+    permission_classes = (IsAdminOrReadOnly,)
+    lookup_field = 'slug'
+
+
+class CategoryViewSet(ListCreateDelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+
+class GenreViewSet(ListCreateDelViewSet):
+    queryset = Genre.objects.all()
+    serializer_class = GenreSerializer
+
+
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.all()
-    serializer_class = TitleSerializer
+    queryset = Title.objects.annotate(
+        Avg('reviews__score')
+        ).order_by('-year', 'name')
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = TitleFilter
+    permission_classes = (IsAdminOrReadOnly,)
+    http_method_names = ['get', 'post', 'patch', 'delete']
+
+    def get_serializer_class(self):
+        if self.request.method in permissions.SAFE_METHODS:
+            return TitleSerializer
+        return TitleActionsSerializer
 
 
-class CommentViewSet(viewsets.ModelViewSet):
+class CommentReviewViewSet(viewsets.ModelViewSet):
+    """Базовый вьюсет для CommentViewSet и ReviewViewSet."""
+
+    permission_classes = (
+        permissions.IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrAdmin,
+    )
+    http_method_names = ['get', 'post', 'patch', 'delete']
+
+
+class CommentViewSet(CommentReviewViewSet):
     serializer_class = CommentSerializer
-    # permission_classes = ()
 
     def get_review(self):
         return get_object_or_404(Review, pk=self.kwargs.get('review_id'))
@@ -239,9 +288,8 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer.save(author=self.request.user, review=self.get_review())
 
 
-class ReviewViewSet(viewsets.ModelViewSet):
+class ReviewViewSet(CommentReviewViewSet):
     serializer_class = ReviewSerializer
-    # permission_classes = ()
 
     def get_title(self):
         return get_object_or_404(Title, pk=self.kwargs.get('title_id'))

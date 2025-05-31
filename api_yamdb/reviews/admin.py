@@ -2,7 +2,7 @@ from xmlrpc.client import boolean
 
 from django.contrib import admin
 
-from reviews.models import Comment, Review, User
+from reviews.models import Category, Comment, Genre, Review, Title, User
 
 MAX_DISPLAY_LENGTH = 30
 
@@ -35,5 +35,8 @@ class UserAdmin(admin.ModelAdmin):
     def is_superuser_display(self, obj):
         return obj.is_superuser
 
+admin.site.register(Title)
+admin.site.register(Category)
+admin.site.register(Genre)
 admin.site.register(Review)
 admin.site.register(Comment)
