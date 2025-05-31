@@ -5,7 +5,9 @@ from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from reviews.models import Comment, Review, Title, User
+from reviews.models import (
+    Category, Comment, Genre, Review, Title, User
+)
 from reviews.validators import UsernameValidator, RegirteredUsernameValidator
 
 
@@ -44,9 +46,47 @@ class UserMeSerializer(UserSerializer):
         fields = ('username', 'email', 'first_name', 'last_name', 'bio', 'role')
         read_only_fields = ('role',)
 
-class TitleSerializer(serializers.ModelSerializer):
+
+class CategorySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        fields = ('name', 'slug')
+        model = Category
+
+
+class GenreSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        fields = ('name', 'slug')
+        model = Genre
+
+
+class TitleActionsSerializer(serializers.ModelSerializer):
+    category = serializers.SlugRelatedField(
+        queryset=Category.objects.all(),
+        slug_field='slug'
+    )
+    genre = serializers.SlugRelatedField(
+        queryset=Genre.objects.all(),
+        slug_field='slug',
+        many=True
+    )
     class Meta:
         fields = '__all__'
+        model = Title
+
+
+class TitleSerializer(serializers.ModelSerializer):
+    category = CategorySerializer()
+    genre = GenreSerializer(many=True)
+    rating = serializers.IntegerField(
+        source='reviews__score__avg',
+        read_only=True
+    )
+    class Meta:
+        fields = (
+            'id', 'name', 'year', 'rating', 'description', 'genre', 'category'
+        )
         model = Title
 
 
