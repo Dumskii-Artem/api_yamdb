@@ -89,7 +89,9 @@ class Command(BaseCommand):
                     id=title_data['category']).first()
                 if not category:
                     self.stdout.write(self.style.WARNING(
-                        f"Категория с id {title_data['category']} не найдена для произведения {title_data['name']}"))
+                        f"Категория с id {title_data['category']} "
+                        "не найдена для произведения {title_data['name']}"
+                    ))
                     continue
 
                 Title.objects.update_or_create(
@@ -123,7 +125,10 @@ class Command(BaseCommand):
                     title.genre.add(genre)
                 else:
                     self.stdout.write(self.style.WARNING(
-                        f"Не найдена связь жанр-произведение: title_id={genre_title_data['title_id']} genre_id={genre_title_data['genre_id']}"))
+                        "Не найдена связь жанр-произведение:"
+                        f" title_id={genre_title_data['title_id']}"
+                        f" genre_id={genre_title_data['genre_id']}"
+                    ))
 
     def import_reviews(self, path):
         if not os.path.exists(path):
@@ -138,7 +143,9 @@ class Command(BaseCommand):
                 author = User.objects.filter(id=review_data['author']).first()
                 if not title or not author:
                     self.stdout.write(self.style.WARNING(
-                        f"Не найдено произведение или автор для отзыва id={review_data['id']}"))
+                        "Не найдено произведение или автор"
+                        f" для отзыва id={review_data['id']}"
+                    ))
                     continue
 
                 Review.objects.update_or_create(
@@ -166,7 +173,9 @@ class Command(BaseCommand):
                 author = User.objects.filter(id=comment_data['author']).first()
                 if not review or not author:
                     self.stdout.write(self.style.WARNING(
-                        f"Не найден отзыв или автор для комментария id={comment_data['id']}"))
+                        "Не найден отзыв или автор"
+                        f" для комментария id={comment_data['id']}"
+                    ))
                     continue
 
                 Comment.objects.update_or_create(

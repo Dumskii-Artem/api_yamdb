@@ -54,10 +54,12 @@ class SignupView(APIView):
             })
 
         # 2) Оба существуют и соответствуют
-        if user_by_username and user_by_email and user_by_username == user_by_email:
+        if (user_by_username and
+                user_by_email
+                and user_by_username == user_by_email
+        ):
             user = user_by_username
-            # высылаем код
-            ...
+            # высылаем код после выхода из if
 
         # 3) Существует только username (новый email) — ошибка по email
         elif user_by_username:
@@ -96,7 +98,6 @@ class SignupView(APIView):
 
         return Response(
             {'email': email, 'username': username}
-            # ,            status=status.HTTP_200_OK
         )
 
 
@@ -119,9 +120,10 @@ class TokenObtainView(APIView):
         user.confirmation_code = ''
         user.save(update_fields=['confirmation_code'])
         if not code_Ok:
-            raise ValidationError('Неверный код подтверждения. '
-                                  f'{confirmation_code}!={user.confirmation_code}'
-                                  )
+            raise ValidationError(
+                'Неверный код подтверждения. '
+                f'{confirmation_code}!={user.confirmation_code}'
+            )
 
         token = AccessToken.for_user(user)
         return Response({'token': str(token)}, status=status.HTTP_200_OK)
