@@ -94,6 +94,11 @@ pytest
 
 ### Примеры запросов
 
+### Импорт из файлов /api_yamdb/api_yamdb/static/data/*.csv
+```
+Ubuntu: python3 manage.py import_csv
+Windows: python manage.py import_csv
+```
 
 ## Над проектом работают:
 

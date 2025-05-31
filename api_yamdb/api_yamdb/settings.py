@@ -129,5 +129,5 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-FORBIDDEN_USERNAMES = ['me',]
+FORBIDDEN_USERNAMES = ['me', ]
 USERNAME_REGEX = r'^[\w.@+-]+\Z'

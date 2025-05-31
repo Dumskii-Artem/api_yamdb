@@ -8,7 +8,7 @@ from rest_framework.exceptions import ValidationError
 from reviews.models import (
     Category, Comment, Genre, Review, Title, User
 )
-from reviews.validators import UsernameValidator, RegirteredUsernameValidator
+from reviews.validators import UsernameValidator
 
 
 class SignupSerializer(UsernameValidator, serializers.Serializer):
@@ -21,6 +21,7 @@ class SignupSerializer(UsernameValidator, serializers.Serializer):
         max_length=MAX_EMAIL_LENGTH
     )
 
+
 class TokenObtainSerializer(serializers.Serializer):
     username = serializers.CharField(
         max_length=MAX_USERNAME_LENGTH,
@@ -31,16 +32,19 @@ class TokenObtainSerializer(serializers.Serializer):
         required=True
     )
 
+
 class UserSerializer(UsernameValidator, serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('username', 'email', 'first_name',
                   'last_name', 'bio', 'role')
 
+
 class UserMeSerializer(UserSerializer):
     class Meta:
         model = User
-        fields = ('username', 'email', 'first_name', 'last_name', 'bio', 'role')
+        fields = ('username', 'email', 'first_name',
+                  'last_name', 'bio', 'role')
         read_only_fields = ('role',)
 
 
@@ -68,6 +72,7 @@ class TitleActionsSerializer(serializers.ModelSerializer):
         slug_field='slug',
         many=True
     )
+
     class Meta:
         fields = '__all__'
         model = Title
@@ -80,6 +85,7 @@ class TitleSerializer(serializers.ModelSerializer):
         source='reviews__score__avg',
         read_only=True
     )
+
     class Meta:
         fields = (
             'id', 'name', 'year', 'rating', 'description', 'genre', 'category'
@@ -115,6 +121,6 @@ class ReviewSerializer(serializers.ModelSerializer):
         title_id = self.context.get('view').kwargs.get('title_id')
         title = get_object_or_404(Title, id=title_id)
         if (title.reviews.filter(author=request.user).exists()
-            and request.method == 'POST'):
+                and request.method == 'POST'):
             raise ValidationError('Вы уже оставили отзыв.')
         return data

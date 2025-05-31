@@ -6,6 +6,7 @@ from rest_framework import serializers
 
 # FORBIDDEN_USERNAMES = ['me',]
 
+
 def check_username(username):
     if username.upper() in (
             name.upper()
@@ -32,10 +33,12 @@ def check_username(username):
             f'{", ".join(sorted(set(wrong_chars)))}'
         )
 
+
 class UsernameValidator:
     def validate_username(self, value):
         check_username(value)
         return value
+
 
 class RegirteredUsernameValidator:
     def validate_username(self, value):

@@ -1,11 +1,3 @@
-# ПРИМЕР ПРИМЕНЕНИЯ
-# class TokenObtainView(APIView):
-#     def post(self, request):
-#         serializer = TokenObtainSerializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         # для примера!!!
-#         permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrAdmin]
-
 import random
 
 from django.conf import settings
@@ -18,7 +10,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import (
-    status, viewsets, permissions, decorators, serializers, filters, mixins
+    status, viewsets, permissions, serializers, filters, mixins
 )
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
@@ -34,13 +26,14 @@ from api.serializers import (
     TitleActionsSerializer, ReviewSerializer
 )
 from api.filters import TitleFilter
-from reviews.models import Category, Comment, Genre, Review, Title, User
+from reviews.models import Category, Genre, Review, Title, User
 
 
 USERNAME_ERROR_MESSAGE = 'Пользователь с таким username уже есть'
 EMAIL_ERROR_MESSAGE = 'У этого пользователя другой Email.'
 EMAIL_ALIEN_ERROR_MESSAGE = 'Чужой email.'
 USERNAME_EMAIL_MISMATCH = 'username и email принадлежат разным пользователям.'
+
 
 class SignupView(APIView):
     def post(self, request):
@@ -91,20 +84,21 @@ class SignupView(APIView):
         user.save(update_fields=['confirmation_code'])
 
         send_mail(
-            subject = 'Код подтверждения YaMDb',
-            message = (
+            subject='Код подтверждения YaMDb',
+            message=(
                 f'Ваш код подтверждения: {confirmation_code}\n'
                 'Используйте код для получения токена.'
             ),
-            from_email = 'noreply@yamdb.mail.ru',
-            recipient_list = [email],
-            fail_silently = False,
+            from_email='noreply@yamdb.mail.ru',
+            recipient_list=[email],
+            fail_silently=False,
         )
 
         return Response(
             {'email': email, 'username': username}
             # ,            status=status.HTTP_200_OK
         )
+
 
 class TokenObtainView(APIView):
     def post(self, request):
@@ -115,26 +109,27 @@ class TokenObtainView(APIView):
         confirmation_code = serializer.validated_data['confirmation_code']
 
         user = get_object_or_404(User, username=username)
-        # user = User.objects.filter(username=username).first()
 
         code_Ok = (
-            (len(confirmation_code)==settings.CONFIRMATION_CODE_LENGTH)
-            and
-            ((confirmation_code == user.confirmation_code)
-            or (confirmation_code == settings.CONFIRMATION_CHEATER_CODE)))
+            (len(confirmation_code) == settings.CONFIRMATION_CODE_LENGTH)
+
+            and ((confirmation_code == user.confirmation_code)
+                 or (confirmation_code == settings.CONFIRMATION_CHEATER_CODE)))
 
         user.confirmation_code = ''
         user.save(update_fields=['confirmation_code'])
         if not code_Ok:
             raise ValidationError('Неверный код подтверждения. '
-                f'{confirmation_code}!={user.confirmation_code}'
+                                  f'{confirmation_code}!={user.confirmation_code}'
                                   )
 
         token = AccessToken.for_user(user)
         return Response({'token': str(token)}, status=status.HTTP_200_OK)
 
+
 class UserPagination(PageNumberPagination):
     page_size = 5  # число на страницу
+
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('username')
@@ -181,12 +176,13 @@ class UserViewSet(viewsets.ModelViewSet):
             {"detail": "Метод не разрешён."},
             status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
+
 class ListCreateDelViewSet(
-        mixins.ListModelMixin,
-        mixins.CreateModelMixin,
-        mixins.DestroyModelMixin,
-        viewsets.GenericViewSet
-    ):
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet
+):
     """Базовый вьюсет для CategoryViewSet и GenreViewSet."""
 
     filter_backends = (filters.SearchFilter,)
@@ -208,7 +204,7 @@ class GenreViewSet(ListCreateDelViewSet):
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.annotate(
         Avg('reviews__score')
-        ).order_by('-year', 'name')
+    ).order_by('-year', 'name')
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
     permission_classes = (IsAdminOrReadOnly,)

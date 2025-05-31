@@ -21,7 +21,7 @@ class TitleFilter(django_filters.FilterSet):
     year = django_filters.NumberFilter(
         field_name='year'
     )
-    
+
     class Meta:
         model = Title
         fields = ('category', 'genre', 'name', 'year')

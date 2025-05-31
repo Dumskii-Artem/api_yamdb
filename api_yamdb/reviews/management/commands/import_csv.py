@@ -106,7 +106,8 @@ class Command(BaseCommand):
         self.import_title_genres()
 
     def import_title_genres(self):
-        path = os.path.join(settings.BASE_DIR, 'static', 'data', 'genre_title.csv')
+        path = os.path.join(settings.BASE_DIR, 'static',
+                            'data', 'genre_title.csv')
         if not os.path.exists(path):
             self.stdout.write(self.style.ERROR(f'Файл {path} не найден.'))
             return
