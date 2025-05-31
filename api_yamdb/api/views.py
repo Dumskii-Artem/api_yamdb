@@ -54,9 +54,10 @@ class SignupView(APIView):
             })
 
         # 2) Оба существуют и соответствуют
-        if (user_by_username and
-                user_by_email
-                and user_by_username == user_by_email
+        if (
+            user_by_username
+            and user_by_email
+            and user_by_username == user_by_email
         ):
             user = user_by_username
             # высылаем код после выхода из if
