@@ -206,7 +206,7 @@ class GenreViewSet(ListCreateDelViewSet):
 
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.annotate(
-        Avg('reviews__score')
+        rating=Avg('reviews__score')
     ).order_by('-year', 'name')
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
