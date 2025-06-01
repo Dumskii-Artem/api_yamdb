@@ -23,7 +23,7 @@ from django.shortcuts import get_object_or_404
 
 from api.serializers import (
     CategorySerializer, CommentSerializer, GenreSerializer, TitleSerializer,
-    TitleActionsSerializer, ReviewSerializer
+    TitleUpdateSerializer, ReviewSerializer
 )
 from api.filters import TitleFilter
 from reviews.models import Category, Genre, Review, Title, User
@@ -216,7 +216,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.request.method in permissions.SAFE_METHODS:
             return TitleSerializer
-        return TitleActionsSerializer
+        return TitleUpdateSerializer
 
 
 class CommentReviewViewSet(viewsets.ModelViewSet):
