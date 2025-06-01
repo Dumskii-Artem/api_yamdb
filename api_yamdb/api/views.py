@@ -22,8 +22,8 @@ from .serializers import SignupSerializer, TokenObtainSerializer, \
 from django.shortcuts import get_object_or_404
 
 from api.serializers import (
-    CategorySerializer, CommentSerializer, GenreSerializer, TitleSerializer,
-    TitleActionsSerializer, ReviewSerializer
+    CategorySerializer, CommentSerializer, GenreSerializer, TitleViewSerializer,
+    TitleCreateUpdateSerializer, ReviewSerializer
 )
 from api.filters import TitleFilter
 from reviews.models import Category, Genre, Review, Title, User
@@ -206,7 +206,7 @@ class GenreViewSet(ListCreateDelViewSet):
 
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.annotate(
-        Avg('reviews__score')
+        rating=Avg('reviews__score')
     ).order_by('-year', 'name')
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
@@ -215,8 +215,8 @@ class TitleViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.request.method in permissions.SAFE_METHODS:
-            return TitleSerializer
-        return TitleActionsSerializer
+            return TitleViewSerializer
+        return TitleCreateUpdateSerializer
 
 
 class CommentReviewViewSet(viewsets.ModelViewSet):

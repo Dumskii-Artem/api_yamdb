@@ -62,7 +62,7 @@ class GenreSerializer(serializers.ModelSerializer):
         model = Genre
 
 
-class TitleActionsSerializer(serializers.ModelSerializer):
+class TitleCreateUpdateSerializer(serializers.ModelSerializer):
     category = serializers.SlugRelatedField(
         queryset=Category.objects.all(),
         slug_field='slug'
@@ -74,23 +74,26 @@ class TitleActionsSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        fields = '__all__'
+        fields = (
+            'id', 'name', 'year', 'description', 'genre', 'category'
+        )
         model = Title
 
+    def to_representation(self, instance):
+        return TitleViewSerializer(instance).data
 
-class TitleSerializer(serializers.ModelSerializer):
+
+class TitleViewSerializer(serializers.ModelSerializer):
     category = CategorySerializer()
     genre = GenreSerializer(many=True)
-    rating = serializers.IntegerField(
-        source='reviews__score__avg',
-        read_only=True
-    )
+    rating = serializers.IntegerField(default=None)
 
     class Meta:
         fields = (
             'id', 'name', 'year', 'rating', 'description', 'genre', 'category'
         )
         model = Title
+        read_only_fields = fields
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -102,7 +105,6 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         fields = ('id', 'text', 'author', 'pub_date')
         model = Comment
-        read_only_fields = ('review',)
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -114,13 +116,14 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         fields = ('id', 'text', 'author', 'score', 'pub_date')
         model = Review
-        read_only_fields = ('title',)
 
     def validate(self, data):
         request = self.context.get('request')
         title_id = self.context.get('view').kwargs.get('title_id')
-        title = get_object_or_404(Title, id=title_id)
-        if (title.reviews.filter(author=request.user).exists()
-                and request.method == 'POST'):
-            raise ValidationError('Вы уже оставили отзыв.')
+        if (
+            Review.objects.filter(
+                title_id=title_id, author=request.user
+            ).exists() and request.method == 'POST'
+        ):
+            raise ValidationError('Отзыв уже существует.')
         return data
