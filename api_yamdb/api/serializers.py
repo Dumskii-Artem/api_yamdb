@@ -79,6 +79,9 @@ class TitleCreateUpdateSerializer(serializers.ModelSerializer):
         )
         model = Title
 
+    def to_representation(self, instance):
+        return TitleViewSerializer(instance).data
+
 
 class TitleViewSerializer(serializers.ModelSerializer):
     category = CategorySerializer()
