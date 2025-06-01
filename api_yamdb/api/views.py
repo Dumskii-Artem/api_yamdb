@@ -180,7 +180,7 @@ class UserViewSet(viewsets.ModelViewSet):
             status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
-class ListCreateDelViewSet(
+class CategoryGenreBaseViewSet(
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
     mixins.DestroyModelMixin,
@@ -194,12 +194,12 @@ class ListCreateDelViewSet(
     lookup_field = 'slug'
 
 
-class CategoryViewSet(ListCreateDelViewSet):
+class CategoryViewSet(CategoryGenreBaseViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
 
-class GenreViewSet(ListCreateDelViewSet):
+class GenreViewSet(CategoryGenreBaseViewSet):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
 
@@ -207,7 +207,7 @@ class GenreViewSet(ListCreateDelViewSet):
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.annotate(
         rating=Avg('reviews__score')
-    ).order_by('-year', 'name')
+    ).order_by(*Title._meta.ordering)
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
     permission_classes = (IsAdminOrReadOnly,)
@@ -232,7 +232,7 @@ class CommentViewSet(CommentReviewViewSet):
     serializer_class = CommentSerializer
 
     def get_review(self):
-        return get_object_or_404(Review, pk=self.kwargs.get('review_id'))
+        return get_object_or_404(Review, pk=self.kwargs['review_id'])
 
     def get_queryset(self):
         return self.get_review().comments.all()
@@ -245,7 +245,7 @@ class ReviewViewSet(CommentReviewViewSet):
     serializer_class = ReviewSerializer
 
     def get_title(self):
-        return get_object_or_404(Title, pk=self.kwargs.get('title_id'))
+        return get_object_or_404(Title, pk=self.kwargs['title_id'])
 
     def get_queryset(self):
         return self.get_title().reviews.all()
