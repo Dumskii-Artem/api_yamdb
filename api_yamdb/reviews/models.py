@@ -5,7 +5,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from api_yamdb import settings
-from reviews.constants import MIN_RATING, MAX_RATING, MIN_YEAR
+from reviews.constants import COMMENT_SYMBOLS, MIN_RATING, MAX_RATING
 from reviews.validators import check_username
 
 MAX_USERNAME_LENGTH = 150
@@ -80,48 +80,44 @@ class User(AbstractUser):
         return self.role == USER
 
 
-class Category(models.Model):
+class BaseCategoryGenre(models.Model):
+    """Базовая модель для Category и Genre."""
+    name = models.CharField(
+        max_length=256,
+        verbose_name='Название'
+    )
+    slug = models.SlugField(
+        max_length=50,
+        verbose_name='Идентификатор',
+        unique=True
+    )
+
+    class Meta:
+        ordering = ('name',)
+        abstract = True
+    
+    def __str__(self):
+        return self.name
+
+
+class Category(BaseCategoryGenre):
     """Модель категории произведений."""
 
-    name = models.CharField(
-        max_length=256,
-        verbose_name='Категория'
-    )
-    slug = models.SlugField(
-        max_length=50,
-        verbose_name='Идентификатор',
-        unique=True
-    )
-
-    class Meta:
+    class Meta(BaseCategoryGenre.Meta):
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
-        ordering = ['name']
-
-    def __str__(self):
-        return self.name
 
 
-class Genre(models.Model):
+class Genre(BaseCategoryGenre):
     """Модель жанры произведений."""
 
-    name = models.CharField(
-        max_length=256,
-        verbose_name='Жанр'
-    )
-    slug = models.SlugField(
-        max_length=50,
-        verbose_name='Идентификатор',
-        unique=True
-    )
-
-    class Meta:
+    class Meta(BaseCategoryGenre.Meta):
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
-        ordering = ['name']
 
-    def __str__(self):
-        return self.name
+
+def actual_year():
+    return dt.today().year
 
 
 class Title(models.Model):
@@ -138,7 +134,6 @@ class Title(models.Model):
         Genre,
         verbose_name='Жанр',
         blank=True,
-        through='GenreTitle'
     )
     name = models.CharField(
         max_length=256,
@@ -147,8 +142,7 @@ class Title(models.Model):
     year = models.SmallIntegerField(
         verbose_name='Год выпуска',
         validators=[
-            MinValueValidator(MIN_YEAR),
-            MaxValueValidator(dt.today().year)
+            MaxValueValidator(actual_year)
         ]
     )
     description = models.TextField(
@@ -161,45 +155,40 @@ class Title(models.Model):
         verbose_name = 'Произведение'
         verbose_name_plural = 'Произведения'
         default_related_name = 'titles'
-        ordering = ['-year', 'name']
+        ordering = ('-year', 'name')
 
     def __str__(self):
         return self.name
 
 
-class GenreTitle(models.Model):
-    """Промежуточная модель жанр-произведение."""
-    genre = models.ForeignKey(
-        Genre,
-        null=True,
-        on_delete=models.SET_NULL
+class BaseReviewComment(models.Model):
+    """Базовая модель для Review и Comment."""
+
+    text = models.TextField(
+        verbose_name='Отзыв'
     )
-    title = models.ForeignKey(
-        Title,
+    pub_date = models.DateTimeField(
+        verbose_name='Дата публикации',
+        auto_now_add=True
+    )
+    author = models.ForeignKey(
+        User,
+        verbose_name='Автор',
         on_delete=models.CASCADE
     )
 
     class Meta:
-        verbose_name = 'Жанр произведения'
-        verbose_name_plural = 'Жанры произведения'
-
-    def __str__(self):
-        return f'"{self.title.name}" {self.genre.name}'
+        ordering = ('-pub_date',)
+        abstract = True
 
 
-class Review(models.Model):
+class Review(BaseReviewComment):
     """Модель отзывы."""
 
     title = models.ForeignKey(
         Title,
         verbose_name='Произведение',
-        on_delete=models.CASCADE)
-    author = models.ForeignKey(
-        User,
-        verbose_name='Ревьюер',
-        on_delete=models.CASCADE)
-    text = models.TextField(
-        verbose_name='Отзыв'
+        on_delete=models.CASCADE
     )
     score = models.SmallIntegerField(
         verbose_name='Рейтинг',
@@ -207,16 +196,11 @@ class Review(models.Model):
             MinValueValidator(MIN_RATING), MaxValueValidator(MAX_RATING)
         ]
     )
-    pub_date = models.DateTimeField(
-        verbose_name='Дата публикации',
-        auto_now_add=True
-    )
 
-    class Meta:
+    class Meta(BaseReviewComment.Meta):
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
         default_related_name = 'reviews'
-        ordering = ['-pub_date']
         constraints = [
             models.UniqueConstraint(
                 fields=['author', 'title'],
@@ -226,37 +210,29 @@ class Review(models.Model):
 
     def __str__(self):
         return (
-            f'Отзыв от {self.author} '
+            f'Отзыв {self.text[:COMMENT_SYMBOLS]} '
+            f'от {self.author} '
             f'на произведение {self.title.name}.'
         )
 
 
-class Comment(models.Model):
+class Comment(BaseReviewComment):
     """Модель комментарии."""
 
     review = models.ForeignKey(
         Review,
         verbose_name='Комментарий',
-        on_delete=models.CASCADE)
-    author = models.ForeignKey(
-        User,
-        verbose_name='Комментатор',
-        on_delete=models.CASCADE)
-    text = models.TextField()
-    pub_date = models.DateTimeField(
-        verbose_name='Дата публикации',
-        auto_now_add=True
+        on_delete=models.CASCADE
     )
 
-    class Meta:
+    class Meta(BaseReviewComment.Meta):
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
         default_related_name = 'comments'
-        ordering = ['-pub_date']
 
     def __str__(self):
         return (
-            f'Комментарий от {self.author} '
+            f'Комментарий {self.text[:COMMENT_SYMBOLS]} от {self.author} '
             f'на отзыв {self.review.author} '
             f'к произведению {self.review.title.name}.'
         )
