@@ -21,9 +21,8 @@ class IsAuthorOrModeratorOrAdmin(BasePermission):
             or obj.author == request.user
             or (request_user.is_authenticated
                 and (request_user.is_moderator or request_user.is_admin)
-            )
+                )
         )
-
 
 
 class IsAdminOrReadOnly(IsAdmin):
@@ -32,5 +31,3 @@ class IsAdminOrReadOnly(IsAdmin):
             request.method in permissions.SAFE_METHODS
             or super().has_permission(request, view)
         )
-           
-        

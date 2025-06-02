@@ -11,9 +11,11 @@ from reviews.models import (
 
 from reviews.validators import check_username
 
+
 class UsernameValidatorMixin:
     def validate_username(self, username):
         return check_username(username)
+
 
 class SignupSerializer(UsernameValidatorMixin, serializers.Serializer):
     username = serializers.CharField(

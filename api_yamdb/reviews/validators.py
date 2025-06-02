@@ -3,6 +3,7 @@ import re
 from django.conf import settings
 from django.core.exceptions import ValidationError
 
+
 def check_username(username):
     if username == settings.FORBIDDEN_USERNAME:
         raise ValidationError(

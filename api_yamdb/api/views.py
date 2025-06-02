@@ -81,6 +81,7 @@ def signup(request):
         status=status.HTTP_200_OK
     )
 
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def token_obtain(request):
@@ -136,6 +137,7 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
 
 class CategoryGenreBaseViewSet(
     mixins.ListModelMixin,
