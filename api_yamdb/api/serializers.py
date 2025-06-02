@@ -27,7 +27,7 @@ class SignupSerializer(UsernameValidatorMixin, serializers.Serializer):
     )
 
 
-class TokenObtainSerializer(serializers.Serializer):
+class TokenObtainSerializer(UsernameValidatorMixin, serializers.Serializer):
     username = serializers.CharField(
         max_length=MAX_USERNAME_LENGTH,
         required=True
@@ -37,9 +37,9 @@ class TokenObtainSerializer(serializers.Serializer):
         required=True
     )
 
-    def validate_username(self, value):
-        check_username(value)
-        return value
+    # def validate_username(self, value):
+    #     check_username(value)
+    #     return value
 
 
 class UserSerializer(UsernameValidatorMixin, serializers.ModelSerializer):
@@ -68,6 +68,19 @@ class GenreSerializer(serializers.ModelSerializer):
         model = Genre
 
 
+class TitleViewSerializer(serializers.ModelSerializer):
+    category = CategorySerializer()
+    genre = GenreSerializer(many=True)
+    rating = serializers.IntegerField(default=None)
+
+    class Meta:
+        fields = (
+            'id', 'name', 'year', 'rating', 'description', 'genre', 'category'
+        )
+        model = Title
+        read_only_fields = fields
+
+
 class TitleCreateUpdateSerializer(serializers.ModelSerializer):
     category = serializers.SlugRelatedField(
         queryset=Category.objects.all(),
@@ -87,19 +100,6 @@ class TitleCreateUpdateSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         return TitleViewSerializer(instance).data
-
-
-class TitleViewSerializer(serializers.ModelSerializer):
-    category = CategorySerializer()
-    genre = GenreSerializer(many=True)
-    rating = serializers.IntegerField(default=None)
-
-    class Meta:
-        fields = (
-            'id', 'name', 'year', 'rating', 'description', 'genre', 'category'
-        )
-        model = Title
-        read_only_fields = fields
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -124,12 +124,13 @@ class ReviewSerializer(serializers.ModelSerializer):
         model = Review
 
     def validate(self, data):
-        request = self.context.get('request')
-        title_id = self.context.get('view').kwargs.get('title_id')
-        if (
-            Review.objects.filter(
-                title_id=title_id, author=request.user
-            ).exists() and request.method == 'POST'
+        if self.context['request'].method != 'POST':
+            return data
+
+        if (Review.objects.filter(
+                title_id=self.context.get('view').kwargs.get('title_id'),
+                author=self.context.get('request').user
+            ).exists()
         ):
             raise ValidationError('Отзыв уже существует.')
         return data

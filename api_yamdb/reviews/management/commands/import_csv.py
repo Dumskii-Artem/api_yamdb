@@ -13,20 +13,31 @@ class Command(BaseCommand):
         data_dir = os.path.join(settings.BASE_DIR, 'static', 'data')
 
         self.stdout.write('Начинаю импорт данных...')
-        self.import_users(os.path.join(data_dir, 'users.csv'))
-        self.import_categories(os.path.join(data_dir, 'category.csv'))
-        self.import_genres(os.path.join(data_dir, 'genre.csv'))
-        self.import_titles(os.path.join(data_dir, 'titles.csv'))
-        self.import_reviews(os.path.join(data_dir, 'review.csv'))
-        self.import_comments(os.path.join(data_dir, 'comments.csv'))
-        self.stdout.write(self.style.SUCCESS(
-            'Импорт данных завершён успешно.'))
+        any_success = False
+
+        any_success |= self.import_users(os.path.join(data_dir, 'users.csv'))
+        any_success |= self.import_categories(
+            os.path.join(data_dir, 'category.csv'))
+        any_success |= self.import_genres(os.path.join(data_dir, 'genre.csv'))
+        any_success |= self.import_titles(os.path.join(data_dir, 'titles.csv'))
+        any_success |= self.import_reviews(
+            os.path.join(data_dir, 'review.csv'))
+        any_success |= self.import_comments(
+            os.path.join(data_dir, 'comments.csv'))
+
+        if any_success:
+            self.stdout.write(
+                self.style.SUCCESS('Импорт данных завершён успешно.'))
+        else:
+            self.stdout.write(self.style.WARNING(
+                'Импорт данных не выполнен: файлы не найдены.'))
 
     def import_users(self, path):
         if not os.path.exists(path):
             self.stdout.write(self.style.ERROR(f'Файл {path} не найден.'))
-            return
+            return False
 
+        count = 0
         with open(path, encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for user_data in reader:
@@ -41,13 +52,16 @@ class Command(BaseCommand):
                         'last_name': user_data.get('last_name', ''),
                     }
                 )
-        self.stdout.write(f'Импортировано пользователей из {path}')
+                count += 1
+        self.stdout.write(f'Импортировано {count} пользователей из {path}')
+        return True
 
     def import_categories(self, path):
         if not os.path.exists(path):
             self.stdout.write(self.style.ERROR(f'Файл {path} не найден.'))
-            return
+            return False
 
+        count = 0
         with open(path, encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for category_data in reader:
@@ -58,13 +72,16 @@ class Command(BaseCommand):
                         'slug': category_data['slug'],
                     }
                 )
-        self.stdout.write(f'Импортировано категорий из {path}')
+                count += 1
+        self.stdout.write(f'Импортировано {count} категорий из {path}')
+        return True
 
     def import_genres(self, path):
         if not os.path.exists(path):
             self.stdout.write(self.style.ERROR(f'Файл {path} не найден.'))
-            return
+            return  False
 
+        count = 0
         with open(path, encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for genre_data in reader:
@@ -75,13 +92,16 @@ class Command(BaseCommand):
                         'slug': genre_data['slug'],
                     }
                 )
-        self.stdout.write(f'Импортировано жанров из {path}')
+                count += 1
+        self.stdout.write(f'Импортировано {count} жанров из {path}')
+        return True
 
     def import_titles(self, path):
         if not os.path.exists(path):
             self.stdout.write(self.style.ERROR(f'Файл {path} не найден.'))
-            return
+            return False
 
+        count = 0
         with open(path, encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for title_data in reader:
@@ -103,16 +123,17 @@ class Command(BaseCommand):
                         'description': title_data.get('description', ''),
                     }
                 )
-        self.stdout.write(f'Импортировано произведений из {path}')
-
+                count += 1
+        self.stdout.write(f'Импортировано {count} произведений из {path}')
         self.import_title_genres()
+        return True
 
     def import_title_genres(self):
         path = os.path.join(settings.BASE_DIR, 'static',
                             'data', 'genre_title.csv')
         if not os.path.exists(path):
             self.stdout.write(self.style.ERROR(f'Файл {path} не найден.'))
-            return
+            return False
 
         with open(path, encoding='utf-8') as file:
             reader = csv.DictReader(file)
@@ -129,12 +150,14 @@ class Command(BaseCommand):
                         f" title_id={genre_title_data['title_id']}"
                         f" genre_id={genre_title_data['genre_id']}"
                     ))
+        return True
 
     def import_reviews(self, path):
         if not os.path.exists(path):
             self.stdout.write(self.style.ERROR(f'Файл {path} не найден.'))
-            return
+            return False
 
+        count = 0
         with open(path, encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for review_data in reader:
@@ -158,13 +181,17 @@ class Command(BaseCommand):
                         'pub_date': review_data['pub_date'],
                     }
                 )
-        self.stdout.write(f'Импортировано отзывов из {path}')
+                count += 1
+
+        self.stdout.write(f'Импортировано {count} отзывов из {path}')
+        return True
 
     def import_comments(self, path):
         if not os.path.exists(path):
             self.stdout.write(self.style.ERROR(f'Файл {path} не найден.'))
-            return
+            return False
 
+        count = 0
         with open(path, encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for comment_data in reader:
@@ -187,4 +214,6 @@ class Command(BaseCommand):
                         'pub_date': comment_data['pub_date'],
                     }
                 )
-        self.stdout.write(f'Импортировано комментариев из {path}')
+                count += 1
+        self.stdout.write(f'Импортировано {count} комментариев из {path}')
+        return True

@@ -77,6 +77,12 @@ class User(AbstractUser):
     def is_user(self):
         return self.role == USER
 
+    def __str__(self):
+        return (f'{self.username=} {self.email=} {self.role=}'
+                f'{self.bio[:20]=} {self.confirmation_code=}'
+                f'{self.first_name} {self.last_name}'
+                )
+
 
 class BaseCategoryGenre(models.Model):
     """Базовая модель для Category и Genre."""
@@ -95,7 +101,7 @@ class BaseCategoryGenre(models.Model):
         abstract = True
 
     def __str__(self):
-        return self.name
+        return f'{self.name[:20]=} {self.slug[:20]=}'
 
 
 class Category(BaseCategoryGenre):
@@ -132,6 +138,7 @@ class Title(models.Model):
         Genre,
         verbose_name='Жанр',
         blank=True,
+        related_name='titles',
     )
     name = models.CharField(
         max_length=256,
@@ -156,10 +163,9 @@ class Title(models.Model):
         ordering = ('-year', 'name')
 
     def __str__(self):
-        return self.name
+        return f'{self.name[:20]=}'
 
-
-class BaseReviewComment(models.Model):
+class MessageData(models.Model):
     """Базовая модель для Review и Comment."""
 
     text = models.TextField(
@@ -178,9 +184,15 @@ class BaseReviewComment(models.Model):
     class Meta:
         ordering = ('-pub_date',)
         abstract = True
+        default_related_name = '%(class)ss'
 
+    def __str__(self):
+        return (f'{self.__class__.__name__} '
+                f'{self.text[:COMMENT_SYMBOLS]=} '
+                f'{self.author=} '
+                )
 
-class Review(BaseReviewComment):
+class Review(MessageData):
     """Модель отзывы."""
 
     title = models.ForeignKey(
@@ -195,10 +207,9 @@ class Review(BaseReviewComment):
         ]
     )
 
-    class Meta(BaseReviewComment.Meta):
+    class Meta(MessageData.Meta):
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
-        default_related_name = 'reviews'
         constraints = [
             models.UniqueConstraint(
                 fields=['author', 'title'],
@@ -207,14 +218,9 @@ class Review(BaseReviewComment):
         ]
 
     def __str__(self):
-        return (
-            f'Отзыв {self.text[:COMMENT_SYMBOLS]} '
-            f'от {self.author} '
-            f'на произведение {self.title.name}.'
-        )
+        return f'{super().__str__()} title={self.title.name[:20]}'
 
-
-class Comment(BaseReviewComment):
+class Comment(MessageData):
     """Модель комментарии."""
 
     review = models.ForeignKey(
@@ -223,14 +229,13 @@ class Comment(BaseReviewComment):
         on_delete=models.CASCADE
     )
 
-    class Meta(BaseReviewComment.Meta):
+    class Meta(MessageData.Meta):
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
-        default_related_name = 'comments'
 
     def __str__(self):
-        return (
-            f'Комментарий {self.text[:COMMENT_SYMBOLS]} от {self.author} '
-            f'на отзыв {self.review.author} '
-            f'к произведению {self.review.title.name}.'
-        )
+        def __str__(self):
+            return (f'{super().__str__()} '
+                    f'{self.review.author=} '
+                    f'{self.review.title.name=}'
+                    )

@@ -6,7 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -120,10 +120,8 @@ AUTH_USER_MODEL = 'reviews.User'
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 EMAIL_FILE_PATH = BASE_DIR / 'emails'
 
-
 CONFIRMATION_CODE_LENGTH = 5
 CONFIRMATION_CODE_CHARS = string.digits
-CONFIRMATION_CHEATER_CODE = 'j' * CONFIRMATION_CODE_LENGTH
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
@@ -134,4 +132,4 @@ SIMPLE_JWT = {
 
 FORBIDDEN_USERNAME = 'me'
 USERNAME_REGEX = r'^[\w.@+-]+\Z'
-OUR_NOREPLY_EMAIL = 'noreply@yamdb.mail.ru'
+NOREPLY_EMAIL = 'noreply@yamdb.mail.ru'

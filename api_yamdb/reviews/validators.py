@@ -10,12 +10,13 @@ def check_username(username):
             f"Имя '{username}' не разрешено."
         )
 
-    allowed_chars = settings.USERNAME_REGEX.strip('^\\Z')
-    invalid_chars = re.sub(allowed_chars, '', username)
-
-    if invalid_chars:
+    if invalid_chars := re.sub(
+            settings.USERNAME_REGEX.strip('^\\Z'),
+            '',
+            username):
         raise ValidationError(
-            f'Имя содержит недопустимые символы: {invalid_chars}'
+            'Имя содержит недопустимые символы: '
+            f'{"".join(sorted(set(invalid_chars)))}'
         )
 
     return username

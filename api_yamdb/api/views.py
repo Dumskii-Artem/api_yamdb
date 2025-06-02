@@ -4,26 +4,18 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.db import IntegrityError
 from django.db.models import Avg
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import (
+    status, viewsets, permissions, filters, mixins
+)
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-from rest_framework import (
-    status, viewsets, permissions, filters, mixins
-)
 from rest_framework_simplejwt.tokens import AccessToken
 
-from .permissions import IsAdmin, IsAuthorOrModeratorOrAdmin, IsAdminOrReadOnly
-from .serializers import (
-    SignupSerializer,
-    TokenObtainSerializer,
-    UserSerializer,
-    UserMeSerializer
-)
-
-from django.shortcuts import get_object_or_404
-
+from api.filters import TitleFilter
 from api.serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -32,12 +24,17 @@ from api.serializers import (
     TitleCreateUpdateSerializer,
     ReviewSerializer
 )
-from api.filters import TitleFilter
 from reviews.models import Category, Genre, Review, Title, User
-
+from .permissions import IsAdmin, IsAuthorOrModeratorOrAdmin, IsAdminOrReadOnly
+from .serializers import (
+    SignupSerializer,
+    TokenObtainSerializer,
+    UserSerializer,
+    UserMeSerializer
+)
 
 USERNAME_ERROR_MESSAGE = 'Пользователь с таким username уже есть'
-EMAIL_ALIEN_ERROR_MESSAGE = 'Чужой email.'
+EMAIL_ERROR_MESSAGE = 'Пользователь с таким email уже есть'
 
 
 @api_view(['POST'])
@@ -51,14 +48,9 @@ def signup(request):
     try:
         user, _ = User.objects.get_or_create(username=username, email=email)
     except IntegrityError:
-        raise ValidationError({
-            field: [message]
-            for field, value, message in (
-                ('username', username, 'USERNAME_ERROR_MESSAGE'),
-                ('email', email, 'EMAIL_ERROR_MESSAGE'),
-            )
-            if User.objects.filter(**{field: value}).exists()
-        })
+        if User.objects.filter(username=username).exists():
+            raise ValidationError({'username': [USERNAME_ERROR_MESSAGE]})
+        raise ValidationError({'email': [EMAIL_ERROR_MESSAGE]})
 
     confirmation_code = ''.join(
         random.choices(
@@ -74,7 +66,7 @@ def signup(request):
             f'Ваш код подтверждения: {confirmation_code}\n'
             'Используйте код для получения токена.'
         ),
-        from_email=settings.OUR_NOREPLY_EMAIL,
+        from_email=settings.NOREPLY_EMAIL,
         recipient_list=[email],
         fail_silently=False,
     )
@@ -98,15 +90,13 @@ def token_obtain(request):
 
     code_ok = (
         (len(confirmation_code) == settings.CONFIRMATION_CODE_LENGTH)
-        and ((confirmation_code == user.confirmation_code)
-             or (confirmation_code == settings.CONFIRMATION_CHEATER_CODE)))
+        and (confirmation_code == user.confirmation_code))
 
     if not code_ok:
-        user.confirmation_code = ''
-        user.save(update_fields=['confirmation_code'])
-        raise ValidationError(
-            f'Неверный код подтверждения: {confirmation_code}'
-        )
+        if user.confirmation_code != '':
+            user.confirmation_code = ''
+            user.save(update_fields=['confirmation_code'])
+        raise ValidationError('Неверный код подтверждения:')
 
     token = AccessToken.for_user(user)
     return Response({'token': str(token)}, status=status.HTTP_200_OK)
@@ -142,7 +132,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class CategoryGenreBaseViewSet(
+class BaseViewSet(
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
     mixins.DestroyModelMixin,
@@ -156,12 +146,12 @@ class CategoryGenreBaseViewSet(
     lookup_field = 'slug'
 
 
-class CategoryViewSet(CategoryGenreBaseViewSet):
+class CategoryViewSet(BaseViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
 
-class GenreViewSet(CategoryGenreBaseViewSet):
+class GenreViewSet(BaseViewSet):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
 

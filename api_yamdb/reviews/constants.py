@@ -2,5 +2,4 @@
 MIN_RATING = 1
 MAX_RATING = 10
 
-# Количество символов для стокового представления.
 COMMENT_SYMBOLS = 50
