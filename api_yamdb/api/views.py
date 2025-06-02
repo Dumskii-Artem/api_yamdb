@@ -7,7 +7,6 @@ from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import ValidationError
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import (
@@ -26,8 +25,12 @@ from .serializers import (
 from django.shortcuts import get_object_or_404
 
 from api.serializers import (
-    CategorySerializer, CommentSerializer, GenreSerializer, TitleViewSerializer,
-    TitleCreateUpdateSerializer, ReviewSerializer
+    CategorySerializer,
+    CommentSerializer,
+    GenreSerializer,
+    TitleViewSerializer,
+    TitleCreateUpdateSerializer,
+    ReviewSerializer
 )
 from api.filters import TitleFilter
 from reviews.models import Category, Genre, Review, Title, User

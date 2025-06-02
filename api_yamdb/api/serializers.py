@@ -1,7 +1,6 @@
 from django.conf import settings
 
 from reviews.models import MAX_USERNAME_LENGTH, MAX_EMAIL_LENGTH, User
-from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
