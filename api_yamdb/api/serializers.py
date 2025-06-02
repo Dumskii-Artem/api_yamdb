@@ -128,9 +128,9 @@ class ReviewSerializer(serializers.ModelSerializer):
             return data
 
         if (Review.objects.filter(
-                title_id=self.context.get('view').kwargs.get('title_id'),
-                author=self.context.get('request').user
-            ).exists()
+            title_id=self.context.get('view').kwargs.get('title_id'),
+            author=self.context.get('request').user
+        ).exists()
         ):
             raise ValidationError('Отзыв уже существует.')
         return data

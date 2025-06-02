@@ -79,7 +79,7 @@ class Command(BaseCommand):
     def import_genres(self, path):
         if not os.path.exists(path):
             self.stdout.write(self.style.ERROR(f'Файл {path} не найден.'))
-            return  False
+            return False
 
         count = 0
         with open(path, encoding='utf-8') as file:

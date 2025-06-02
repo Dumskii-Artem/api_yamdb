@@ -165,6 +165,7 @@ class Title(models.Model):
     def __str__(self):
         return f'{self.name[:20]=}'
 
+
 class MessageData(models.Model):
     """Базовая модель для Review и Comment."""
 
@@ -191,6 +192,7 @@ class MessageData(models.Model):
                 f'{self.text[:COMMENT_SYMBOLS]=} '
                 f'{self.author=} '
                 )
+
 
 class Review(MessageData):
     """Модель отзывы."""
@@ -219,6 +221,7 @@ class Review(MessageData):
 
     def __str__(self):
         return f'{super().__str__()} title={self.title.name[:20]}'
+
 
 class Comment(MessageData):
     """Модель комментарии."""
