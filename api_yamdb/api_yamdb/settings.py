@@ -1,10 +1,14 @@
+import os
+import string
 from datetime import timedelta
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv()
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-SECRET_KEY = 'p&l%385148kslhtyn^##a1)ilz@4zqj=rq&agdol^##zgl9(vs'
 
 DEBUG = True
 
@@ -19,8 +23,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'django_filters',
-    'api',
     'reviews',
+    'api',
 ]
 
 MIDDLEWARE = [
@@ -118,9 +122,8 @@ EMAIL_FILE_PATH = BASE_DIR / 'emails'
 
 
 CONFIRMATION_CODE_LENGTH = 5
-CONFIRMATION_CODE_CHARS = '0123456789'
-# если неправильная длина, то ничего не выйдет
-CONFIRMATION_CHEATER_CODE = '55555'
+CONFIRMATION_CODE_CHARS = string.digits
+CONFIRMATION_CHEATER_CODE = 'j' * CONFIRMATION_CODE_LENGTH
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
@@ -129,5 +132,6 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-FORBIDDEN_USERNAMES = ['me', ]
+FORBIDDEN_USERNAME = 'me'
 USERNAME_REGEX = r'^[\w.@+-]+\Z'
+OUR_NOREPLY_EMAIL = 'noreply@yamdb.mail.ru'

@@ -2,22 +2,26 @@ import random
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db import IntegrityError
 from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import (
-    status, viewsets, permissions, serializers, filters, mixins
+    status, viewsets, permissions, filters, mixins
 )
-from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
 
 from .permissions import IsAdmin, IsAuthorOrModeratorOrAdmin, IsAdminOrReadOnly
-from .serializers import SignupSerializer, TokenObtainSerializer, \
-    UserSerializer, UserMeSerializer
+from .serializers import (
+    SignupSerializer,
+    TokenObtainSerializer,
+    UserSerializer,
+    UserMeSerializer
+)
 
 from django.shortcuts import get_object_or_404
 
@@ -30,155 +34,108 @@ from reviews.models import Category, Genre, Review, Title, User
 
 
 USERNAME_ERROR_MESSAGE = 'Пользователь с таким username уже есть'
-EMAIL_ERROR_MESSAGE = 'У этого пользователя другой Email.'
 EMAIL_ALIEN_ERROR_MESSAGE = 'Чужой email.'
-USERNAME_EMAIL_MISMATCH = 'username и email принадлежат разным пользователям.'
 
 
-class SignupView(APIView):
-    def post(self, request):
-        serializer = SignupSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        username = serializer.validated_data['username']
-        email = serializer.validated_data['email']
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def signup(request):
+    serializer = SignupSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    username = serializer.validated_data['username']
+    email = serializer.validated_data['email']
 
-        user_by_username = User.objects.filter(username=username).first()
-        user_by_email = User.objects.filter(email=email).first()
+    try:
+        user, _ = User.objects.get_or_create(username=username, email=email)
+    except IntegrityError:
+        raise ValidationError({
+            field: [message]
+            for field, value, message in (
+                ('username', username, 'USERNAME_ERROR_MESSAGE'),
+                ('email', email, 'EMAIL_ERROR_MESSAGE'),
+            )
+            if User.objects.filter(**{field: value}).exists()
+        })
 
-        # 1) Оба существуют, но не соответствуют одному и тому же объекту
-        if (user_by_username and user_by_email
-                and user_by_username != user_by_email):
-            raise serializers.ValidationError({
-                'username': [USERNAME_ERROR_MESSAGE],
-                'email': [EMAIL_ALIEN_ERROR_MESSAGE]
-            })
+    confirmation_code = ''.join(
+        random.choices(
+            settings.CONFIRMATION_CODE_CHARS,
+            k=settings.CONFIRMATION_CODE_LENGTH
+        ))
+    user.confirmation_code = confirmation_code
+    user.save(update_fields=['confirmation_code'])
 
-        # 2) Оба существуют и соответствуют
-        if (
-            user_by_username
-            and user_by_email
-            and user_by_username == user_by_email
-        ):
-            user = user_by_username
-            # высылаем код после выхода из if
+    send_mail(
+        subject='Код подтверждения YaMDb',
+        message=(
+            f'Ваш код подтверждения: {confirmation_code}\n'
+            'Используйте код для получения токена.'
+        ),
+        from_email=settings.OUR_NOREPLY_EMAIL,
+        recipient_list=[email],
+        fail_silently=False,
+    )
 
-        # 3) Существует только username (новый email) — ошибка по email
-        elif user_by_username:
-            raise serializers.ValidationError({
-                'username': [EMAIL_ERROR_MESSAGE]
-            })
+    return Response(
+        {'email': email, 'username': username},
+        status=status.HTTP_200_OK
+    )
 
-        # 4) Существует только email (новый username) — ошибка по username
-        elif user_by_email:
-            raise serializers.ValidationError({
-                'email': [EMAIL_ALIEN_ERROR_MESSAGE]
-            })
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def token_obtain(request):
+    serializer = TokenObtainSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
 
-        # 5) Ни username, ни email не существуют — создаём нового пользователя
-        else:
-            user = User.objects.create(username=username, email=email)
+    username = serializer.validated_data['username']
+    confirmation_code = serializer.validated_data['confirmation_code']
 
-        confirmation_code = ''.join(
-            random.choices(
-                settings.CONFIRMATION_CODE_CHARS,
-                k=settings.CONFIRMATION_CODE_LENGTH
-            ))
-        user.confirmation_code = confirmation_code
-        user.save(update_fields=['confirmation_code'])
+    user = get_object_or_404(User, username=username)
 
-        send_mail(
-            subject='Код подтверждения YaMDb',
-            message=(
-                f'Ваш код подтверждения: {confirmation_code}\n'
-                'Используйте код для получения токена.'
-            ),
-            from_email='noreply@yamdb.mail.ru',
-            recipient_list=[email],
-            fail_silently=False,
-        )
+    code_ok = (
+        (len(confirmation_code) == settings.CONFIRMATION_CODE_LENGTH)
+        and ((confirmation_code == user.confirmation_code)
+             or (confirmation_code == settings.CONFIRMATION_CHEATER_CODE)))
 
-        return Response(
-            {'email': email, 'username': username}
-        )
-
-
-class TokenObtainView(APIView):
-    def post(self, request):
-        serializer = TokenObtainSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        username = serializer.validated_data['username']
-        confirmation_code = serializer.validated_data['confirmation_code']
-
-        user = get_object_or_404(User, username=username)
-
-        code_Ok = (
-            (len(confirmation_code) == settings.CONFIRMATION_CODE_LENGTH)
-
-            and ((confirmation_code == user.confirmation_code)
-                 or (confirmation_code == settings.CONFIRMATION_CHEATER_CODE)))
-
+    if not code_ok:
         user.confirmation_code = ''
         user.save(update_fields=['confirmation_code'])
-        if not code_Ok:
-            raise ValidationError(
-                'Неверный код подтверждения. '
-                f'{confirmation_code}!={user.confirmation_code}'
-            )
+        raise ValidationError(
+            f'Неверный код подтверждения: {confirmation_code}'
+        )
 
-        token = AccessToken.for_user(user)
-        return Response({'token': str(token)}, status=status.HTTP_200_OK)
-
-
-class UserPagination(PageNumberPagination):
-    page_size = 5  # число на страницу
+    token = AccessToken.for_user(user)
+    return Response({'token': str(token)}, status=status.HTTP_200_OK)
 
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('username')
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    pagination_class = UserPagination
+    permission_classes = [IsAdmin]
     lookup_field = 'username'
     filter_backends = [filters.SearchFilter]
     search_fields = ['username', 'email', 'first_name', 'last_name', 'role']
     http_method_names = ['get', 'patch', 'post', 'head',
                          'options', 'delete']  # без 'put'
 
-    def get_permissions(self):
-        if self.action == 'me':
-            return [IsAuthenticated()]
-        return [IsAdmin()]
-
-    def get_serializer_class(self):
-        if self.action == 'me':
-            return UserMeSerializer
-        return UserSerializer
-
-    @action(methods=['GET', 'PATCH', 'DELETE'], detail=False, url_path='me')
+    @action(
+        methods=['GET', 'PATCH'],
+        detail=False,
+        url_path=settings.FORBIDDEN_USERNAME,
+        permission_classes=[IsAuthenticated],
+    )
     def me(self, request):
         if request.method == 'GET':
-            serializer = self.get_serializer(request.user)
-            return Response(serializer.data)
+            return Response(UserSerializer(request.user).data)
 
-        if request.method == 'PATCH':
-            data = request.data.copy()
-
-            # Защита от изменения роли
-            if 'role' in data:
-                data.pop('role')
-
-            serializer = self.get_serializer(
-                request.user, data=data, partial=True
-            )
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data)
-
-        return Response(
-            {"detail": "Метод не разрешён."},
-            status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
+        serializer = UserMeSerializer(
+            request.user,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 class CategoryGenreBaseViewSet(
     mixins.ListModelMixin,

@@ -51,16 +51,10 @@ Windows: python -m pip install --upgrade pip
 ```
 pip install -r requirements.txt
 ```
-Зайти в папку:
-```
-cd api_yamdb/
-```
 Выполнить миграции:
 ```
-Ubuntu: python3 manage.py makemigrations
-        python3 manage.py migrate
-Windows: python manage.py makemigrations
-         python manage.py migrate
+Ubuntu: python3 manage.py migrate
+Windows: python manage.py migrate
 ```
 Запустить скрипт для создания пользователей,
 нужно для прохождения тестов
@@ -80,6 +74,11 @@ Windows: python manage.py runserver
 ## Документация:
 
 После запуска проекта, документация доступна по [ссылке](http://127.0.0.1:8000/redoc/)
+
+## Импорт данных
+```
+Ubuntu: python3 manage.py import_csv
+```
 
 ## Тестирование: 
 

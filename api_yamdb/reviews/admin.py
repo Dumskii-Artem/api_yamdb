@@ -15,24 +15,16 @@ class UserAdmin(admin.ModelAdmin):
         'last_name',
         'bio_info',
         'role',
-        'is_staff_display',
-        'is_superuser_display',
+        'is_staff',
+        'is_superuser',
     )
     list_editable = ('role',)
     search_fields = ('username', 'email', 'first_name', 'last_name')
     list_filter = ('role',)
 
     @admin.display(description='Инфо')
-    def bio_info(self, obj):
-        return obj.bio[:MAX_DISPLAY_LENGTH]
-
-    @admin.display(boolean=True, description='staff')
-    def is_staff_display(self, obj):
-        return obj.is_staff
-
-    @admin.display(boolean=True, description='super')
-    def is_superuser_display(self, obj):
-        return obj.is_superuser
+    def bio_info(self, user):
+        return user.bio[:MAX_DISPLAY_LENGTH]
 
 
 admin.site.register(Title)

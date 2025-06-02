@@ -8,10 +8,14 @@ from rest_framework.exceptions import ValidationError
 from reviews.models import (
     Category, Comment, Genre, Review, Title, User
 )
-from reviews.validators import UsernameValidator
 
+from reviews.validators import check_username
 
-class SignupSerializer(UsernameValidator, serializers.Serializer):
+class UsernameValidatorMixin:
+    def validate_username(self, username):
+        return check_username(username)
+
+class SignupSerializer(UsernameValidatorMixin, serializers.Serializer):
     username = serializers.CharField(
         required=True,
         max_length=MAX_USERNAME_LENGTH
@@ -32,8 +36,12 @@ class TokenObtainSerializer(serializers.Serializer):
         required=True
     )
 
+    def validate_username(self, value):
+        check_username(value)
+        return value
 
-class UserSerializer(UsernameValidator, serializers.ModelSerializer):
+
+class UserSerializer(UsernameValidatorMixin, serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('username', 'email', 'first_name',
@@ -41,10 +49,7 @@ class UserSerializer(UsernameValidator, serializers.ModelSerializer):
 
 
 class UserMeSerializer(UserSerializer):
-    class Meta:
-        model = User
-        fields = ('username', 'email', 'first_name',
-                  'last_name', 'bio', 'role')
+    class Meta(UserSerializer.Meta):
         read_only_fields = ('role',)
 
 

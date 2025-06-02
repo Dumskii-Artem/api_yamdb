@@ -1,17 +1,16 @@
 from datetime import date as dt
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
-from api_yamdb import settings
 from reviews.constants import COMMENT_SYMBOLS, MIN_RATING, MAX_RATING
 from reviews.validators import check_username
 
 MAX_USERNAME_LENGTH = 150
 MAX_EMAIL_LENGTH = 254
 MAX_NAME_LENGTH = 100
-MAX_ROLE_LENGTH = 12
 
 USER = 'user'
 MODERATOR = 'moderator'
@@ -39,7 +38,6 @@ class User(AbstractUser):
 
     role = models.CharField(
         verbose_name='Роль',
-        # max 'user', 'admin', 'moderator' = 9
         max_length=max(len(role) for role, _ in ROLE_CHOICES),
         choices=ROLE_CHOICES,
         default=USER,

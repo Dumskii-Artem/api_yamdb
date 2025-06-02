@@ -89,8 +89,8 @@ class Command(BaseCommand):
                     id=title_data['category']).first()
                 if not category:
                     self.stdout.write(self.style.WARNING(
-                        f"Категория с id {title_data['category']} "
-                        "не найдена для произведения {title_data['name']}"
+                        f'Категория с id {title_data["category"]}'
+                        'не найдена для произведения {title_data["name"]}'
                     ))
                     continue
 
